@@ -1,18 +1,17 @@
 import os
 import re
 import asyncio
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from pytube import YouTube
 import speech_recognition as sr
 from pydub import AudioSegment
-from groq import Groq
 from youtube_transcript_api import YouTubeTranscriptApi
+from pytube import YouTube
+from groq import Groq
+from pyrogram import Client, filters
 from youtube_transcript_api.formatters import JSONFormatter
 from config import Telegram, Ai
 from database import db
 
-system_prompt = """
+system_prompt ="""
 Do NOT repeat unmodified content.
 Do NOT mention anything like "Here is the summary:" or "Here is a summary of the video in 2-3 sentences:" etc.
 User will only give you youtube video subtitles, For summarizing YouTube video subtitles:
@@ -28,12 +27,7 @@ For song lyrics, poems, recipes, sheet music, or short creative content:
 Be helpful without directly copying content."""
 
 # Initialize the Pyrogram client
-app = Client(
-    "bot",
-    api_id=Telegram.API_ID,
-    api_hash=Telegram.API_HASH,
-    bot_token=Telegram.BOT_TOKEN
-)
+client = Client('bot', bot_token=Telegram.BOT_TOKEN)
 
 # Speech recognizer
 recognizer = sr.Recognizer()
@@ -44,8 +38,7 @@ async def extract_youtube_transcript(youtube_url):
         video_id = video_id_match.group(0) if video_id_match else None
         if video_id is None:
             return "no transcript"
-        
-        transcript_list = await asyncio.to_thread(YouTubeTranscriptApi.list_transcripts, video_id)
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         transcript = transcript_list.find_transcript(['en', 'ja', 'ko', 'de', 'fr', 'ru', 'it', 'es', 'pl', 'uk', 'nl', 'zh-TW', 'zh-CN', 'zh-Hant', 'zh-Hans'])
         transcript_text = ' '.join([item['text'] for item in transcript.fetch()])
         return transcript_text
@@ -56,7 +49,7 @@ async def extract_youtube_transcript(youtube_url):
 async def get_groq_response(user_prompt, system_prompt):
     try:
         client = Groq(api_key=Ai.GROQ_API_KEY)
-        chat_completion = await client.chat.completions.create(
+        chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
@@ -74,43 +67,25 @@ async def get_groq_response(user_prompt, system_prompt):
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
-@app.on_message(filters.command("start") & filters.private)
-async def start_command(client, message: Message):
+@client.on_message(filters.command('start'))
+async def start(client, message):
     await message.reply('Send me a YouTube link, and I will summarize that video for you in text format.')
-    if not await db.is_inserted("users", message.from_user.id):
-        await db.insert("users", message.from_user.id)
+    if not await db.is_inserted("users", message.chat.id):
+        await db.insert("users", message.chat.id)
 
-@app.on_message(filters.command("users") & filters.user(Telegram.AUTH_USER_ID))
-async def users_command(client, message: Message):
+@client.on_message(filters.command('users') & filters.user(Telegram.AUTH_USER_ID))
+async def users(client, message):
     try:
-        users = await db.fetch_all("users")
-        await message.reply(f'Total Users: {len(users)}')
+        users = len(await db.fetch_all("users"))
+        await message.reply(f'Total Users: {users}')
     except Exception as e:
         print(e)
 
-@app.on_message(filters.command("bcast") & filters.user(Telegram.AUTH_USER_ID))
-async def bcast_command(client, message: Message):
-    if not message.reply_to_message:
-        return await message.reply("Please use `/bcast` as a reply to the message you want to broadcast.")
-    
-    msg = message.reply_to_message
-    xx = await message.reply("In progress...")
-    users = await db.fetch_all('users')
-    done = error = 0
-    
-    for user_id in users:
-        try:
-            await app.send_message(int(user_id), msg.text, reply_markup=msg.reply_markup)
-            done += 1
-        except Exception as brd_er:
-            print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
-            error += 1
-    
-    await xx.edit_text(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
-
-@app.on_message(filters.text & ~filters.command(["start", "users", "bcast"]) & filters.private)
-async def handle_message(client, message: Message):
-    url = message.text.strip()
+@client.on_message(filters.text)
+async def handle_message(client, message):
+    url = message.text
+    if message.text.startswith('/start'):
+        return
     print(f"Received URL: {url}")
 
     # Check if the message is a YouTube link
@@ -123,21 +98,21 @@ async def handle_message(client, message: Message):
             transcript_text = await extract_youtube_transcript(url)
             if transcript_text != "no transcript":
                 print("Transcript fetched successfully.")
-                await x.edit_text('Captions found and downloaded. Summarizing the text...')
+                await x.edit('Captions found and downloaded. Summarizing the text...')
 
                 summary = await get_groq_response(transcript_text, system_prompt)
-                await x.edit_text(f'{summary}')
+                await x.edit(f'{summary}')
             else:
                 # No transcript available, fallback to audio transcription
-                await x.edit_text('No captions found. Downloading audio from the YouTube video...')
+                await x.edit('No captions found. Downloading audio from the YouTube video...')
                 print("No captions found. Downloading audio from YouTube...")
 
                 yt = YouTube(url)
                 audio_stream = yt.streams.filter(only_audio=True).first()
-                output_file = audio_stream.download(filename='audio')
+                output_file = audio_stream.download(output_path='.')
 
                 print(f"Downloaded audio to {output_file}")
-                await x.edit_text('Converting audio to text...')
+                await x.edit('Converting audio to text...')
                 print("Converting audio to text...")
 
                 # Convert audio to WAV format
@@ -151,25 +126,24 @@ async def handle_message(client, message: Message):
                     with sr.AudioFile(wav_file) as source:
                         recognizer.adjust_for_ambient_noise(source)
                         audio_data = recognizer.record(source)
-                        
                         try:
                             text = recognizer.recognize_google(audio_data)
                             print(f"Transcribed text: {text}")
 
                             # Summarize the transcribed text
-                            await x.edit_text('Summarizing the text...')
+                            await x.edit('Summarizing the text...')
                             summary = await get_groq_response(text, system_prompt)
                             print(f"Summary: {summary}")
-                            await x.edit_text(f'{summary}')
+                            await x.edit(f'{summary}')
                         except sr.RequestError:
                             print("API unavailable.")
-                            await x.edit_text('API unavailable.')
+                            await x.edit('API unavailable.')
                         except sr.UnknownValueError:
                             print("Unable to recognize speech.")
-                            await x.edit_text('Unable to recognize speech.')
+                            await x.edit('Unable to recognize speech.')
                 except Exception as e:
                     print(f"Error during transcription: {str(e)}")
-                    await x.edit_text(f'Error during transcription: {str(e)}')
+                    await x.edit(f'Error during transcription: {str(e)}')
                 finally:
                     # Clean up files
                     if os.path.exists(output_file):
@@ -180,15 +154,40 @@ async def handle_message(client, message: Message):
                         print(f"Deleted file: {wav_file}")
         except Exception as e:
             print(f"Error: {str(e)}")
-            await x.edit_text(f'Error: {str(e)}')
+            await x.edit(f'Error: {str(e)}')
     else:
         print("Invalid YouTube link.")
         await message.reply('Please send a valid YouTube link.')
 
+@client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
+async def bcast(client, message):
+    if not message.reply_to_message:
+        return await message.reply(
+            "Please use `/bcast` as reply to the message you want to broadcast."
+        )
+    msg = message.reply_to_message
+    xx = await message.reply("In progress...")
+    users = await db.fetch_all('users')
+    done = error = 0
+    for user_id in users:
+        try:
+            await client.send_message(
+                int(user_id),
+                msg.text.format(user=(await client.get_users(int(user_id))).first_name),
+                file=msg.media,
+                buttons=msg.buttons,
+                disable_web_page_preview=True,
+            )
+            done += 1
+        except Exception as brd_er:
+            print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
+            error += 1
+    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
+
 async def main():
-    await app.start()
+    await client.start()
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
-    await app.idle()
+    await client.run()
 
 if __name__ == '__main__':
     asyncio.run(main())
