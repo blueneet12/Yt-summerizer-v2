@@ -184,14 +184,10 @@ async def bcast(client, message):
             error += 1
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
-async def main():
-    # Start the Pyrogram client
-    await client.start()
 
-    # Print a message indicating the bot is running
-    print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
+if __name__ == '__main__':
 
-    # Keep the bot running (handling events) until manually stopped
-    await client.run()
-
-
+    try:
+        client.run()
+    except Exception as e:
+        logger.error(f"Error running the bot: {e}")
