@@ -187,7 +187,8 @@ async def bcast(client, message):
 async def main():
     await client.start()
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
-    await client.run()
+    await client.idle()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
