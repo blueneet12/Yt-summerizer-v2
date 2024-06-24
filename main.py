@@ -100,7 +100,7 @@ async def bcast(client, message: Message):
             error += 1
     await xx.edit_text(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
-@app.on_message(filters.text & ~filters.command)
+@app.on_message(filters.text & ~filters.command(["start", "users", "bcast"]))
 async def handle_message(client, message: Message):
     url = message.text
     if message.text.startswith('/start'):
