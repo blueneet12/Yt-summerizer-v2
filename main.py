@@ -77,10 +77,39 @@ async def start(event):
 @client.on(events.NewMessage(pattern='/users', from_users=Telegram.AUTH_USER_ID))
 async def users(event):
     try:
-        users = len(await db.fetch_all("users"))
-        await event.reply(f'Total Users: {users}')
+        users = await db.fetch_all("users")
+        await event.reply(f'Total Users: {len(users)}')
     except Exception as e:
         print(e)
+
+async def get_user_entity(client, user_id):
+    try:
+        entity = await client.get_input_entity(user_id)
+        return entity
+    except Exception as e:
+        print(f"Error fetching entity for user_id {user_id}: {e}")
+        return None
+
+@client.on(events.NewMessage(pattern='/bcast', from_users=Telegram.AUTH_USER_ID))
+async def bcast(event):
+    if not event.reply_to_msg_id:
+        return await event.reply(
+            "Please use `/bcast` as a reply to the message you want to broadcast."
+        )
+    msg = await event.get_reply_message()
+    xx = await event.reply("In progress...")
+    users = await db.fetch_all('users')
+    done = error = 0
+    for user_id in users:
+        try:
+            entity = await get_user_entity(client, int(user_id))
+            if entity:
+                await client.send_message(entity, msg.text, file=msg.media, buttons=msg.buttons, link_preview=False)
+                done += 1
+        except Exception as brd_er:
+            print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
+            error += 1
+    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
 @client.on(events.NewMessage)
 async def handle_message(event):
@@ -161,31 +190,6 @@ async def handle_message(event):
         print("Invalid YouTube link.")
         await event.reply('Please send a valid YouTube link.')
 
-@client.on(events.NewMessage(pattern='/bcast', from_users=Telegram.AUTH_USER_ID))
-async def bcast(event):
-    if not event.reply_to_msg_id:
-        return await event.reply(
-            "Please use `/bcast` as reply to the message you want to broadcast."
-        )
-    msg = await event.get_reply_message()
-    xx = await event.reply("In progress...")
-    users = await db.fetch_all('users')
-    done = error = 0
-    for user_id in users:
-        try:
-            await TelegramBot.send_message(
-                int(user_id),
-                msg.text.format(user=(await TelegramBot.get_entity(int(user_id))).first_name),
-                file=msg.media,
-                buttons=msg.buttons,
-                link_preview=False,
-            )
-            done += 1
-        except Exception as brd_er:
-            log.error("Broadcast error:\nChat: %d\nError: %s", int(user_id), brd_er)
-            error += 1
-    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
-    
 async def main():
     await client.start(bot_token=Telegram.BOT_TOKEN)
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
