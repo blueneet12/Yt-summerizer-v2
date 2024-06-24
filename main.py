@@ -82,14 +82,6 @@ async def users(event):
     except Exception as e:
         print(e)
 
-async def get_user_entity(client, user_id):
-    try:
-        entity = await client.get_input_entity(user_id)
-        return entity
-    except Exception as e:
-        print(f"Error fetching entity for user_id {user_id}: {e}")
-        return None
-
 @client.on(events.NewMessage(pattern='/bcast', from_users=Telegram.AUTH_USER_ID))
 async def bcast(event):
     if not event.reply_to_msg_id:
@@ -102,10 +94,8 @@ async def bcast(event):
     done = error = 0
     for user_id in users:
         try:
-            entity = await get_user_entity(client, int(user_id))
-            if entity:
-                await client.send_message(entity, msg.text, file=msg.media, buttons=msg.buttons, link_preview=False)
-                done += 1
+            await client.send_message(int(user_id), msg.text, file=msg.media, buttons=msg.buttons, link_preview=False)
+            done += 1
         except Exception as brd_er:
             print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
             error += 1
