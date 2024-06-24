@@ -185,10 +185,15 @@ async def bcast(client, message):
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
 async def main():
+    # Start the Pyrogram client
     await client.start()
+
+    # Print a message indicating the bot is running
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
-    await client.idle()
+
+    # Keep the bot running (handling events) until manually stopped
+    await client.run()
 
 
 if __name__ == '__main__':
-    client.run(main())
+    asyncio.run(main())
