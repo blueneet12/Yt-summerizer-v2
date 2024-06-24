@@ -28,7 +28,12 @@ For song lyrics, poems, recipes, sheet music, or short creative content:
 Be helpful without directly copying content."""
 
 # Initialize the Pyrogram client
-app = Client("bot", api_id=Telegram.API_ID, api_hash=Telegram.API_HASH, bot_token=Telegram.BOT_TOKEN)
+app = Client(
+    "bot",
+    api_id=Telegram.API_ID,
+    api_hash=Telegram.API_HASH,
+    bot_token=Telegram.BOT_TOKEN
+)
 
 # Speech recognizer
 recognizer = sr.Recognizer()
@@ -39,8 +44,8 @@ async def extract_youtube_transcript(youtube_url):
         video_id = video_id_match.group(0) if video_id_match else None
         if video_id is None:
             return "no transcript"
-        loop = asyncio.get_event_loop()
-        transcript_list = await loop.run_in_executor(None, YouTubeTranscriptApi.list_transcripts, video_id)
+        
+        transcript_list = await asyncio.to_thread(YouTubeTranscriptApi.list_transcripts, video_id)
         transcript = transcript_list.find_transcript(['en', 'ja', 'ko', 'de', 'fr', 'ru', 'it', 'es', 'pl', 'uk', 'nl', 'zh-TW', 'zh-CN', 'zh-Hant', 'zh-Hans'])
         transcript_text = ' '.join([item['text'] for item in transcript.fetch()])
         return transcript_text
@@ -51,7 +56,7 @@ async def extract_youtube_transcript(youtube_url):
 async def get_groq_response(user_prompt, system_prompt):
     try:
         client = Groq(api_key=Ai.GROQ_API_KEY)
-        chat_completion = client.chat.completions.create(
+        chat_completion = await client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
@@ -69,14 +74,14 @@ async def get_groq_response(user_prompt, system_prompt):
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
-@app.on_message(filters.command("start"))
-async def start(client, message: Message):
+@app.on_message(filters.command("start") & filters.private)
+async def start_command(client, message: Message):
     await message.reply('Send me a YouTube link, and I will summarize that video for you in text format.')
     if not await db.is_inserted("users", message.from_user.id):
         await db.insert("users", message.from_user.id)
 
 @app.on_message(filters.command("users") & filters.user(Telegram.AUTH_USER_ID))
-async def users(client, message: Message):
+async def users_command(client, message: Message):
     try:
         users = await db.fetch_all("users")
         await message.reply(f'Total Users: {len(users)}')
@@ -84,13 +89,15 @@ async def users(client, message: Message):
         print(e)
 
 @app.on_message(filters.command("bcast") & filters.user(Telegram.AUTH_USER_ID))
-async def bcast(client, message: Message):
+async def bcast_command(client, message: Message):
     if not message.reply_to_message:
         return await message.reply("Please use `/bcast` as a reply to the message you want to broadcast.")
+    
     msg = message.reply_to_message
     xx = await message.reply("In progress...")
     users = await db.fetch_all('users')
     done = error = 0
+    
     for user_id in users:
         try:
             await app.send_message(int(user_id), msg.text, reply_markup=msg.reply_markup)
@@ -98,13 +105,12 @@ async def bcast(client, message: Message):
         except Exception as brd_er:
             print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
             error += 1
+    
     await xx.edit_text(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
-@app.on_message(filters.text & ~filters.command(["start", "users", "bcast"]))
+@app.on_message(filters.text & ~filters.command(["start", "users", "bcast"]) & filters.private)
 async def handle_message(client, message: Message):
-    url = message.text
-    if message.text.startswith('/start'):
-        return
+    url = message.text.strip()
     print(f"Received URL: {url}")
 
     # Check if the message is a YouTube link
@@ -126,12 +132,11 @@ async def handle_message(client, message: Message):
                 await x.edit_text('No captions found. Downloading audio from the YouTube video...')
                 print("No captions found. Downloading audio from YouTube...")
 
-                loop = asyncio.get_event_loop()
-                yt = await loop.run_in_executor(None, YouTube, url)
+                yt = YouTube(url)
                 audio_stream = yt.streams.filter(only_audio=True).first()
-                output_file = await loop.run_in_executor(None, audio_stream.download, 'audio.mp4')
-                print(f"Downloaded audio to {output_file}")
+                output_file = audio_stream.download(filename='audio')
 
+                print(f"Downloaded audio to {output_file}")
                 await x.edit_text('Converting audio to text...')
                 print("Converting audio to text...")
 
@@ -146,6 +151,7 @@ async def handle_message(client, message: Message):
                     with sr.AudioFile(wav_file) as source:
                         recognizer.adjust_for_ambient_noise(source)
                         audio_data = recognizer.record(source)
+                        
                         try:
                             text = recognizer.recognize_google(audio_data)
                             print(f"Transcribed text: {text}")
@@ -182,7 +188,7 @@ async def handle_message(client, message: Message):
 async def main():
     await app.start()
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
-    await idle()
+    await app.idle()
 
 if __name__ == '__main__':
     asyncio.run(main())
