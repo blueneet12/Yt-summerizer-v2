@@ -1,7 +1,8 @@
 import os
 import re
 import asyncio
-from telethon import TelegramClient, events
+from pyrogram import Client, filters
+from pyrogram.types import Message
 from pytube import YouTube
 import speech_recognition as sr
 from pydub import AudioSegment
@@ -11,7 +12,7 @@ from youtube_transcript_api.formatters import JSONFormatter
 from config import Telegram, Ai
 from database import db
 
-system_prompt ="""
+system_prompt = """
 Do NOT repeat unmodified content.
 Do NOT mention anything like "Here is the summary:" or "Here is a summary of the video in 2-3 sentences:" etc.
 User will only give you youtube video subtitles, For summarizing YouTube video subtitles:
@@ -26,8 +27,8 @@ For song lyrics, poems, recipes, sheet music, or short creative content:
 
 Be helpful without directly copying content."""
 
-# Initialize the Telegram client
-client = TelegramClient('bot', Telegram.API_ID, Telegram.API_HASH)
+# Initialize the Pyrogram client
+app = Client("bot", api_id=Telegram.API_ID, api_hash=Telegram.API_HASH, bot_token=Telegram.BOT_TOKEN)
 
 # Speech recognizer
 recognizer = sr.Recognizer()
@@ -68,49 +69,47 @@ async def get_groq_response(user_prompt, system_prompt):
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
-@client.on(events.NewMessage(pattern='/start'))
-async def start(event):
-    await event.reply('Send me a YouTube link, and I will summarize that video for you in text format.')
-    if not await db.is_inserted("users", event.sender_id):
-        await db.insert("users", event.sender_id)
+@app.on_message(filters.command("start"))
+async def start(client, message: Message):
+    await message.reply('Send me a YouTube link, and I will summarize that video for you in text format.')
+    if not await db.is_inserted("users", message.from_user.id):
+        await db.insert("users", message.from_user.id)
 
-@client.on(events.NewMessage(pattern='/users', from_users=Telegram.AUTH_USER_ID))
-async def users(event):
+@app.on_message(filters.command("users") & filters.user(Telegram.AUTH_USER_ID))
+async def users(client, message: Message):
     try:
         users = await db.fetch_all("users")
-        await event.reply(f'Total Users: {len(users)}')
+        await message.reply(f'Total Users: {len(users)}')
     except Exception as e:
         print(e)
 
-@client.on(events.NewMessage(pattern='/bcast', from_users=Telegram.AUTH_USER_ID))
-async def bcast(event):
-    if not event.reply_to_msg_id:
-        return await event.reply(
-            "Please use `/bcast` as a reply to the message you want to broadcast."
-        )
-    msg = await event.get_reply_message()
-    xx = await event.reply("In progress...")
+@app.on_message(filters.command("bcast") & filters.user(Telegram.AUTH_USER_ID))
+async def bcast(client, message: Message):
+    if not message.reply_to_message:
+        return await message.reply("Please use `/bcast` as a reply to the message you want to broadcast.")
+    msg = message.reply_to_message
+    xx = await message.reply("In progress...")
     users = await db.fetch_all('users')
     done = error = 0
     for user_id in users:
         try:
-            await client.send_message(int(user_id), msg.text, file=msg.media, buttons=msg.buttons, link_preview=False)
+            await app.send_message(int(user_id), msg.text, reply_markup=msg.reply_markup)
             done += 1
         except Exception as brd_er:
             print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
             error += 1
-    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
+    await xx.edit_text(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
-@client.on(events.NewMessage)
-async def handle_message(event):
-    url = event.message.message
-    if event.message.text.startswith('/start'):
+@app.on_message(filters.text & ~filters.command)
+async def handle_message(client, message: Message):
+    url = message.text
+    if message.text.startswith('/start'):
         return
     print(f"Received URL: {url}")
 
     # Check if the message is a YouTube link
     if 'youtube.com' in url or 'youtu.be' in url:
-        x = await event.reply('Attempting to download captions from the YouTube video...')
+        x = await message.reply('Attempting to download captions from the YouTube video...')
         print("Attempting to download captions from YouTube...")
 
         try:
@@ -118,13 +117,13 @@ async def handle_message(event):
             transcript_text = await extract_youtube_transcript(url)
             if transcript_text != "no transcript":
                 print("Transcript fetched successfully.")
-                await x.edit('Captions found and downloaded. Summarizing the text...')
+                await x.edit_text('Captions found and downloaded. Summarizing the text...')
 
                 summary = await get_groq_response(transcript_text, system_prompt)
-                await x.edit(f'{summary}')
+                await x.edit_text(f'{summary}')
             else:
                 # No transcript available, fallback to audio transcription
-                await x.edit('No captions found. Downloading audio from the YouTube video...')
+                await x.edit_text('No captions found. Downloading audio from the YouTube video...')
                 print("No captions found. Downloading audio from YouTube...")
 
                 loop = asyncio.get_event_loop()
@@ -133,7 +132,7 @@ async def handle_message(event):
                 output_file = await loop.run_in_executor(None, audio_stream.download, 'audio.mp4')
                 print(f"Downloaded audio to {output_file}")
 
-                await x.edit('Converting audio to text...')
+                await x.edit_text('Converting audio to text...')
                 print("Converting audio to text...")
 
                 # Convert audio to WAV format
@@ -152,19 +151,19 @@ async def handle_message(event):
                             print(f"Transcribed text: {text}")
 
                             # Summarize the transcribed text
-                            await x.edit('Summarizing the text...')
+                            await x.edit_text('Summarizing the text...')
                             summary = await get_groq_response(text, system_prompt)
                             print(f"Summary: {summary}")
-                            await x.edit(f'{summary}')
+                            await x.edit_text(f'{summary}')
                         except sr.RequestError:
                             print("API unavailable.")
-                            await x.edit('API unavailable.')
+                            await x.edit_text('API unavailable.')
                         except sr.UnknownValueError:
                             print("Unable to recognize speech.")
-                            await x.edit('Unable to recognize speech.')
+                            await x.edit_text('Unable to recognize speech.')
                 except Exception as e:
                     print(f"Error during transcription: {str(e)}")
-                    await x.edit(f'Error during transcription: {str(e)}')
+                    await x.edit_text(f'Error during transcription: {str(e)}')
                 finally:
                     # Clean up files
                     if os.path.exists(output_file):
@@ -175,15 +174,15 @@ async def handle_message(event):
                         print(f"Deleted file: {wav_file}")
         except Exception as e:
             print(f"Error: {str(e)}")
-            await x.edit(f'Error: {str(e)}')
+            await x.edit_text(f'Error: {str(e)}')
     else:
         print("Invalid YouTube link.")
-        await event.reply('Please send a valid YouTube link.')
+        await message.reply('Please send a valid YouTube link.')
 
 async def main():
-    await client.start(bot_token=Telegram.BOT_TOKEN)
+    await app.start()
     print("Bot is running...\nHit 🌟 on github repo if you liked my work and please follow on github for more such repos.")
-    await client.run_until_disconnected()
+    await idle()
 
 if __name__ == '__main__':
     asyncio.run(main())
