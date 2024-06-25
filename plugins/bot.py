@@ -8,7 +8,7 @@ from pytube import YouTube
 from groq import Groq
 from pyrogram import Client, filters
 from youtube_transcript_api.formatters import JSONFormatter
-from config import Config, Ai
+from config import Config, Ai, Telegram
 from database import db
 from main import client
 
