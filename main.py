@@ -1,6 +1,6 @@
 import logging
 from pyrogram import Client, idle
-from Config import Config
+from config import Config
 
 # Set the global logging level to WARNING to show only warnings and errors
 logging.basicConfig(
