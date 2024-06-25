@@ -1,4 +1,4 @@
-from Data import Data
+
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup
 
@@ -9,6 +9,6 @@ async def start(unzipbot, msg):
     user = await unzipbot.get_me()
     await unzipbot.send_message(
         msg.chat.id,
-        Data.START,
+        text="hello start",
         reply_markup=InlineKeyboardMarkup(Data.buttons)
     )
