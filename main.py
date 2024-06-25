@@ -11,7 +11,7 @@ logging.basicConfig(
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
 
-client = Client(
+app = Client(
     "UnzipBot",
     api_id=Config.API_ID,
     api_hash=Config.API_HASH,
