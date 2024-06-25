@@ -190,4 +190,4 @@ if __name__ == '__main__':
     try:
         client.run()
     except Exception as e:
-        logger.error(f"Error running the bot: {e}")
+        print(f"Error running the bot: {e}")
