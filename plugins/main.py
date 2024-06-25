@@ -24,9 +24,7 @@ async def users(client, message):
         users = len(await db.fetch_all("users"))
         await message.reply(f'Total Users: {users}')
     except Exception as e:
-        print(e)
-
-
+        print(f"Error fetching users: {e}")
 
 @Client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
 async def bcast(client, message):
@@ -52,4 +50,3 @@ async def bcast(client, message):
             print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
             error += 1
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
- 
