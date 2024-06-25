@@ -2,13 +2,13 @@ import logging
 from pyrogram import Client, idle
 from config import Config
 
-# Set the global logging level to WARNING to show only warnings and errors
+# Set the global logging level to DEBUG for detailed output
 logging.basicConfig(
-    level=logging.WARNING, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 # Adjust specific logging levels for different libraries
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
+logging.getLogger("pyrogram").setLevel(logging.DEBUG)
 logging.getLogger("PIL").setLevel(logging.WARNING)
 
 client = Client(
@@ -16,12 +16,12 @@ client = Client(
     api_id=Config.API_ID,
     api_hash=Config.API_HASH,
     bot_token=Config.BOT_TOKEN,
-    plugins=dict(root="plugins"),
+    plugins=dict(root="plugins"),  # Ensure plugins are loaded from this directory
 )
 
 # Run Bot
 if __name__ == "__main__":
-    client.start()  # Correctly start the client instance
+    client.start()
     uname = client.get_me().username
     print(f"@{uname} Started Successfully!")
     idle()
