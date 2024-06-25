@@ -8,7 +8,7 @@ from pytube import YouTube
 from groq import Groq
 from pyrogram import Client, filters
 from youtube_transcript_api.formatters import JSONFormatter
-from config import Telegram, Ai
+from config import Config, Ai
 from database import db
 
 system_prompt ="""
@@ -27,7 +27,7 @@ For song lyrics, poems, recipes, sheet music, or short creative content:
 Be helpful without directly copying content."""
 
 # Initialize the Pyrogram client
-client = Client('bot', bot_token=Telegram.BOT_TOKEN)
+# client = Client('bot', bot_token=Telegram.BOT_TOKEN)
 
 # Speech recognizer
 recognizer = sr.Recognizer()
@@ -185,9 +185,9 @@ async def bcast(client, message):
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
 
-    try:
-        client.run()
-    except Exception as e:
-        logger.error(f"Error running the bot: {e}")
+  #  try:
+   #     client.run()
+  #  except Exception as e:
+        #logger.error(f"Error running the bot: {e}")
