@@ -11,7 +11,7 @@ logging.basicConfig(
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 logging.getLogger("PIL").setLevel(logging.WARNING)
 
-app = Client(
+client = Client(
     "UnzipBot",
     api_id=Config.API_ID,
     api_hash=Config.API_HASH,
@@ -21,9 +21,9 @@ app = Client(
 
 # Run Bot
 if __name__ == "__main__":
-    app.start()  # Not using run as wanna print...
-    uname = app.get_me().username
+    client.start()  # Not using run as wanna print...
+    uname = client.get_me().username
     print(f"@{uname} Started Successfully!")
     idle()
-    app.stop()
+    client.stop()
     print("Bot stopped. Alvida!")
