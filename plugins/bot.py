@@ -27,8 +27,9 @@ For song lyrics, poems, recipes, sheet music, or short creative content:
 
 Be helpful without directly copying content."""
 
-# Initialize the Pyrogram client
-# client = Client('bot', bot_token=Telegram.BOT_TOKEN)
+
+
+
 
 # Speech recognizer
 recognizer = sr.Recognizer()
