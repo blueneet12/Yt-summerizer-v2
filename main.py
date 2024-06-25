@@ -21,7 +21,7 @@ client = Client(
 
 # Run Bot
 if __name__ == "__main__":
-    Client.start()  # Not using run as wanna print...
+    client.start()  # Correctly start the client instance
     uname = client.get_me().username
     print(f"@{uname} Started Successfully!")
     idle()
