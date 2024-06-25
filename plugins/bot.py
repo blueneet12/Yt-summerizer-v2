@@ -10,7 +10,6 @@ from pyrogram import Client, filters
 from youtube_transcript_api.formatters import JSONFormatter
 from config import Config, Ai, Telegram
 from database import db
-from main import client
 
 system_prompt ="""
 Do NOT repeat unmodified content.
@@ -69,13 +68,13 @@ async def get_groq_response(user_prompt, system_prompt):
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
-@client.on_message(filters.command('start'))
+@Client.on_message(filters.command('start'))
 async def start(client, message):
     await message.reply('Send me a YouTube link, and I will summarize that video for you in text format.')
     if not await db.is_inserted("users", message.chat.id):
         await db.insert("users", message.chat.id)
 
-@client.on_message(filters.command('users') & filters.user(Telegram.AUTH_USER_ID))
+@Client.on_message(filters.command('users') & filters.user(Telegram.AUTH_USER_ID))
 async def users(client, message):
     try:
         users = len(await db.fetch_all("users"))
@@ -83,7 +82,7 @@ async def users(client, message):
     except Exception as e:
         print(e)
 
-@client.on_message(filters.text)
+@Client.on_message(filters.text)
 async def handle_message(client, message):
     url = message.text
     if message.text.startswith('/start'):
@@ -161,7 +160,7 @@ async def handle_message(client, message):
         print("Invalid YouTube link.")
         await message.reply('Please send a valid YouTube link.')
 
-@client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
+@Client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
 async def bcast(client, message):
     if not message.reply_to_message:
         return await message.reply(
