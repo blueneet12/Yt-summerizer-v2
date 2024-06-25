@@ -1,6 +1,7 @@
 print("bot.py has been loaded")
 
 from pyrogram import Client, filters
+from main import client
 # The rest of your bot.py code
 
 @client.on_message(filters.command('start'))
