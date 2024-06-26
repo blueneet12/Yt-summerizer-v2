@@ -85,7 +85,6 @@ import os
 from yt_dlp import YoutubeDL
 from pydub import AudioSegment
 import speech_recognition as sr
-from pyrogram import Client, filters
 
 @Client.on_message(filters.text)
 async def handle_message(client, message):
