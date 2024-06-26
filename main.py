@@ -112,7 +112,7 @@ async def handle_message(client, message):
 
                 # Send summary to the log group
                 summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
-                await client.send_message(Log, summary_message, topic_id=Summary_Topic)
+                await client.send_message(Log, summary_message, message_thread_id=Summary_Topic)
             else:
                 # No transcript available, fallback to audio transcription
                 await x.edit('No captions found. Downloading audio from the YouTube video...')
@@ -161,20 +161,20 @@ async def handle_message(client, message):
 
                                 # Send summary to the log group
                                 summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
-                                await client.send_message(Log, summary_message, topic_id=Summary_Topic)
+                                await client.send_message(Log, summary_message, message_thread_id=Summary_Topic)
                             except sr.RequestError:
                                 error_message = "API unavailable."
-                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
                                 print(error_message)
                                 await x.edit(error_message)
                             except sr.UnknownValueError:
                                 error_message = "Unable to recognize speech."
-                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
                                 print(error_message)
                                 await x.edit(error_message)
                     except Exception as e:
                         error_message = f"Error during transcription: {str(e)}"
-                        await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                        await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
                         print(error_message)
                         await x.edit(error_message)
                     finally:
@@ -187,12 +187,12 @@ async def handle_message(client, message):
                             print(f"Deleted file: {wav_file}")
                 except Exception as e:
                     error_message = f"Error: {str(e)}"
-                    await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                    await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
                     print(error_message)
                     await x.edit(error_message)
         except Exception as e:
             error_message = f"Error: {str(e)}"
-            await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+            await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
             print(error_message)
             await x.edit(error_message)
     else:
