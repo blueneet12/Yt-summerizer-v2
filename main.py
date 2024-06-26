@@ -81,7 +81,13 @@ async def users(client, message):
     except Exception as e:
         print(e)
 
-@client.on_message(filters.text)
+import os
+from yt_dlp import YoutubeDL
+from pydub import AudioSegment
+import speech_recognition as sr
+from pyrogram import Client, filters
+
+@Client.on_message(filters.text)
 async def handle_message(client, message):
     url = message.text
     if message.text.startswith('/start'):
@@ -107,57 +113,75 @@ async def handle_message(client, message):
                 await x.edit('No captions found. Downloading audio from the YouTube video...')
                 print("No captions found. Downloading audio from YouTube...")
 
-                yt = YouTube(url)
-                audio_stream = yt.streams.filter(only_audio=True).first()
-                output_file = audio_stream.download(output_path='.')
-
-                print(f"Downloaded audio to {output_file}")
-                await x.edit('Converting audio to text...')
-                print("Converting audio to text...")
-
-                # Convert audio to WAV format
                 try:
-                    audio = AudioSegment.from_file(output_file)
-                    wav_file = "audio.wav"
-                    audio.export(wav_file, format="wav")
-                    print(f"Converted audio to {wav_file}")
+                    ydl_opts = {
+                        'format': 'bestaudio/best',
+                        'postprocessors': [{
+                            'key': 'FFmpegExtractAudio',
+                            'preferredcodec': 'mp3',
+                            'preferredquality': '192',
+                        }],
+                        'outtmpl': 'downloaded_audio.%(ext)s'
+                    }
 
-                    # Convert audio to text
-                    with sr.AudioFile(wav_file) as source:
-                        recognizer.adjust_for_ambient_noise(source)
-                        audio_data = recognizer.record(source)
-                        try:
-                            text = recognizer.recognize_google(audio_data)
-                            print(f"Transcribed text: {text}")
+                    with YoutubeDL(ydl_opts) as ydl:
+                        info_dict = ydl.extract_info(url, download=True)
+                        output_file = ydl.prepare_filename(info_dict)
+                        output_file = output_file.replace(".webm", ".mp3")  # Adjust extension if needed
 
-                            # Summarize the transcribed text
-                            await x.edit('Summarizing the text...')
-                            summary = await get_groq_response(text, system_prompt)
-                            print(f"Summary: {summary}")
-                            await x.edit(f'{summary}')
-                        except sr.RequestError:
-                            print("API unavailable.")
-                            await x.edit('API unavailable.')
-                        except sr.UnknownValueError:
-                            print("Unable to recognize speech.")
-                            await x.edit('Unable to recognize speech.')
+                    print(f"Downloaded audio to {output_file}")
+                    await x.edit('Converting audio to text...')
+                    print("Converting audio to text...")
+
+                    # Convert audio to WAV format
+                    try:
+                        audio = AudioSegment.from_file(output_file)
+                        wav_file = "audio.wav"
+                        audio.export(wav_file, format="wav")
+                        print(f"Converted audio to {wav_file}")
+
+                        # Convert audio to text
+                        recognizer = sr.Recognizer()
+                        with sr.AudioFile(wav_file) as source:
+                            recognizer.adjust_for_ambient_noise(source)
+                            audio_data = recognizer.record(source)
+                            try:
+                                text = recognizer.recognize_google(audio_data)
+                                print(f"Transcribed text: {text}")
+
+                                # Summarize the transcribed text
+                                await x.edit('Summarizing the text...')
+                                summary = await get_groq_response(text, system_prompt)
+                                print(f"Summary: {summary}")
+                                await x.edit(f'{summary}')
+                            except sr.RequestError:
+                                print("API unavailable.")
+                                await x.edit('API unavailable.')
+                            except sr.UnknownValueError:
+                                print("Unable to recognize speech.")
+                                await x.edit('Unable to recognize speech.')
+                    except Exception as e:
+                        print(f"Error during transcription: {str(e)}")
+                        await x.edit(f'Error during transcription: {str(e)}')
+                    finally:
+                        # Clean up files
+                        if os.path.exists(output_file):
+                            os.remove(output_file)
+                            print(f"Deleted file: {output_file}")
+                        if os.path.exists(wav_file):
+                            os.remove(wav_file)
+                            print(f"Deleted file: {wav_file}")
                 except Exception as e:
-                    print(f"Error during transcription: {str(e)}")
-                    await x.edit(f'Error during transcription: {str(e)}')
-                finally:
-                    # Clean up files
-                    if os.path.exists(output_file):
-                        os.remove(output_file)
-                        print(f"Deleted file: {output_file}")
-                    if os.path.exists(wav_file):
-                        os.remove(wav_file)
-                        print(f"Deleted file: {wav_file}")
+                    print(f"Error: {str(e)}")
+                    await x.edit(f'Error: {str(e)}')
         except Exception as e:
             print(f"Error: {str(e)}")
             await x.edit(f'Error: {str(e)}')
     else:
         print("Invalid YouTube link.")
         await message.reply('Please send a valid YouTube link.')
+
+
 
 @client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
 async def bcast(client, message):
