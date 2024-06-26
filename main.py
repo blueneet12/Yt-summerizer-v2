@@ -208,4 +208,28 @@ async def bcast(client, message):
     msg = message.reply_to_message
     xx = await message.reply("In progress...")
     users = await db.fetch_all('users')
-    done = error
+    done = error = 0
+    for user_id in users:
+        try:
+            await client.send_message(
+                int(user_id),
+                msg.text.format(user=(await client.get_users(int(user_id))).first_name),
+                file=msg.media,
+                buttons=msg.buttons,
+                disable_web_page_preview=True,
+            )
+            done += 1
+        except Exception as brd_er:
+            error_message = f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}"
+            await client.send_message(Log, error_message, topic_id=Error_Topic)
+            print(error_message)
+            error += 1
+    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
+
+if __name__ == '__main__':
+    try:
+        client.run()
+    except Exception as e:
+        error_message = f"Error running the bot: {e}"
+        await client.send_message(Log, error_message, topic_id=Error_Topic)
+        print(error_message)
