@@ -231,5 +231,5 @@ if __name__ == '__main__':
         client.run()
     except Exception as e:
         error_message = f"Error running the bot: {e}"
-        await client.send_message(Log, error_message, topic_id=Error_Topic)
+        client.loop.run_until_complete(client.send_message(Log, error_message, topic_id=Error_Topic))
         print(error_message)
