@@ -80,7 +80,7 @@ async def start(client, message):
     if not await db.is_inserted("users", message.chat.id):
         await db.insert("users", message.chat.id)
 
-@client.on_message(filters.command('users') & filters.user(Telegram.AUTH_USER_ID))
+@client.on_message(filters.command('users') & filters.user(6883997969))
 async def users(client, message):
     try:
         users = len(await db.fetch_all("users"))
@@ -90,7 +90,7 @@ async def users(client, message):
         await client.send_message(Log, error_message)
         print(e)
 
-@client.on_message(filters.regex(r'https?://\S+'))
+@client.on_message(filters.private & filters.regex(r'https?://\S+'))
 async def handle_message(client, message):
     url = message.text
     print(f"Received URL: {url}")
