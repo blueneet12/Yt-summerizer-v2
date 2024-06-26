@@ -90,7 +90,7 @@ async def users(client, message):
         await client.send_message(Log, error_message)
         print(e)
 
-@client.on_message(filters.text & ~filters.command('start'))
+@client.on_message(filters.regex(r'https?://\S+'))
 async def handle_message(client, message):
     url = message.text
     print(f"Received URL: {url}")
