@@ -35,7 +35,7 @@ client = Client('bot', api_id=Telegram.API_ID, api_hash=Telegram.API_HASH, bot_t
 # Speech recognizer
 recognizer = sr.Recognizer()
 
-async def extract_youtube_transcript(youtube_url):
+async def extract_youtube_transcript(youtube_url, client, message):
     try:
         video_id_match = re.search(r"(?<=v=)[^&]+|(?<=youtu.be/)[^?|\n]+", youtube_url)
         video_id = video_id_match.group(0) if video_id_match else None
@@ -47,11 +47,11 @@ async def extract_youtube_transcript(youtube_url):
         return transcript_text
     except Exception as e:
         error_message = f"Error: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
+        await client.send_message(Log, error_message)
         print(f"Error: {e}")
         return "no transcript"
 
-async def get_groq_response(user_prompt, system_prompt):
+async def get_groq_response(user_prompt, system_prompt, client, message):
     try:
         client = Groq(api_key=Ai.GROQ_API_KEY)
         chat_completion = client.chat.completions.create(
@@ -102,12 +102,12 @@ async def handle_message(client, message):
 
         try:
             # Try to get the transcript first
-            transcript_text = await extract_youtube_transcript(url)
+            transcript_text = await extract_youtube_transcript(url, client, message)
             if transcript_text != "no transcript":
                 print("Transcript fetched successfully.")
                 await x.edit('Captions found and downloaded. Summarizing the text...')
 
-                summary = await get_groq_response(transcript_text, system_prompt)
+                summary = await get_groq_response(transcript_text, system_prompt, client, message)
                 await x.edit(f'{summary}')
 
                 # Send summary to the log group
@@ -155,7 +155,7 @@ async def handle_message(client, message):
 
                                 # Summarize the transcribed text
                                 await x.edit('Summarizing the text...')
-                                summary = await get_groq_response(text, system_prompt)
+                                summary = await get_groq_response(text, system_prompt, client, message)
                                 print(f"Summary: {summary}")
                                 await x.edit(f'{summary}')
 
