@@ -46,6 +46,8 @@ async def extract_youtube_transcript(youtube_url):
         transcript_text = ' '.join([item['text'] for item in transcript.fetch()])
         return transcript_text
     except Exception as e:
+        error_message = f"Error: {e}\nUser: {message.chat.id}"
+        await client.send_message(Log, error_message, topic_id=Error_Topic)
         print(f"Error: {e}")
         return "no transcript"
 
@@ -67,6 +69,8 @@ async def get_groq_response(user_prompt, system_prompt):
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
+        error_message = f"Error getting Groq response: {e}\nUser: {message.chat.id}"
+        await client.send_message(Log, error_message, topic_id=Error_Topic)
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
@@ -82,6 +86,8 @@ async def users(client, message):
         users = len(await db.fetch_all("users"))
         await message.reply(f'Total Users: {users}')
     except Exception as e:
+        error_message = f"Error: {e}\nUser: {message.chat.id}"
+        await client.send_message(Log, error_message, topic_id=Error_Topic)
         print(e)
 
 @client.on_message(filters.text & ~filters.command('start'))
@@ -103,6 +109,10 @@ async def handle_message(client, message):
 
                 summary = await get_groq_response(transcript_text, system_prompt)
                 await x.edit(f'{summary}')
+
+                # Send summary to the log group
+                summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
+                await client.send_message(Log, summary_message, topic_id=Summary_Topic)
             else:
                 # No transcript available, fallback to audio transcription
                 await x.edit('No captions found. Downloading audio from the YouTube video...')
@@ -148,15 +158,25 @@ async def handle_message(client, message):
                                 summary = await get_groq_response(text, system_prompt)
                                 print(f"Summary: {summary}")
                                 await x.edit(f'{summary}')
+
+                                # Send summary to the log group
+                                summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
+                                await client.send_message(Log, summary_message, topic_id=Summary_Topic)
                             except sr.RequestError:
-                                print("API unavailable.")
-                                await x.edit('API unavailable.')
+                                error_message = "API unavailable."
+                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                                print(error_message)
+                                await x.edit(error_message)
                             except sr.UnknownValueError:
-                                print("Unable to recognize speech.")
-                                await x.edit('Unable to recognize speech.')
+                                error_message = "Unable to recognize speech."
+                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                                print(error_message)
+                                await x.edit(error_message)
                     except Exception as e:
-                        print(f"Error during transcription: {str(e)}")
-                        await x.edit(f'Error during transcription: {str(e)}')
+                        error_message = f"Error during transcription: {str(e)}"
+                        await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                        print(error_message)
+                        await x.edit(error_message)
                     finally:
                         # Clean up files
                         if os.path.exists(output_file):
@@ -166,11 +186,15 @@ async def handle_message(client, message):
                             os.remove(wav_file)
                             print(f"Deleted file: {wav_file}")
                 except Exception as e:
-                    print(f"Error: {str(e)}")
-                    await x.edit(f'Error: {str(e)}')
+                    error_message = f"Error: {str(e)}"
+                    await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+                    print(error_message)
+                    await x.edit(error_message)
         except Exception as e:
-            print(f"Error: {str(e)}")
-            await x.edit(f'Error: {str(e)}')
+            error_message = f"Error: {str(e)}"
+            await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", topic_id=Error_Topic)
+            print(error_message)
+            await x.edit(error_message)
     else:
         print("Invalid YouTube link.")
         await message.reply('Please send a valid YouTube link.')
@@ -184,24 +208,4 @@ async def bcast(client, message):
     msg = message.reply_to_message
     xx = await message.reply("In progress...")
     users = await db.fetch_all('users')
-    done = error = 0
-    for user_id in users:
-        try:
-            await client.send_message(
-                int(user_id),
-                msg.text.format(user=(await client.get_users(int(user_id))).first_name),
-                file=msg.media,
-                buttons=msg.buttons,
-                disable_web_page_preview=True,
-            )
-            done += 1
-        except Exception as brd_er:
-            print(f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}")
-            error += 1
-    await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
-
-if __name__ == '__main__':
-    try:
-        client.run()
-    except Exception as e:
-        print(f"Error running the bot: {e}")
+    done = error
