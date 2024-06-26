@@ -10,6 +10,9 @@ from pyrogram import Client, filters
 from youtube_transcript_api.formatters import JSONFormatter
 from config import Telegram, Ai
 from database import db
+from yt_dlp import YoutubeDL
+
+
 
 system_prompt ="""
 Do NOT repeat unmodified content.
@@ -81,10 +84,6 @@ async def users(client, message):
     except Exception as e:
         print(e)
 
-import os
-from yt_dlp import YoutubeDL
-from pydub import AudioSegment
-import speech_recognition as sr
 
 @Client.on_message(filters.text)
 async def handle_message(client, message):
