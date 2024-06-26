@@ -47,7 +47,7 @@ async def extract_youtube_transcript(youtube_url):
         return transcript_text
     except Exception as e:
         error_message = f"Error: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, topic_id=Error_Topic)
+        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
         print(f"Error: {e}")
         return "no transcript"
 
@@ -70,7 +70,7 @@ async def get_groq_response(user_prompt, system_prompt):
         return chat_completion.choices[0].message.content
     except Exception as e:
         error_message = f"Error getting Groq response: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, topic_id=Error_Topic)
+        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
@@ -87,7 +87,7 @@ async def users(client, message):
         await message.reply(f'Total Users: {users}')
     except Exception as e:
         error_message = f"Error: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, topic_id=Error_Topic)
+        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
         print(e)
 
 @client.on_message(filters.text & ~filters.command('start'))
