@@ -9,6 +9,11 @@ from groq import Groq
 from config import Telegram, Ai
 from database import db
 
+
+Log = -1002207533101
+Summary_Topic = 3
+Error_Topic = 4
+
 system_prompt ="""
 Do NOT repeat unmodified content.
 Do NOT mention anything like "Here is the summary:" or "Here is a summary of the video in 2-3 sentences:" etc.
