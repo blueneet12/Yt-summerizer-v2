@@ -10,7 +10,7 @@ from config import Telegram, Ai
 from database import db
 
 
-Log = -1002207533101
+Log = -1002211381375
 Summary_Topic = 3
 Error_Topic = 4
 
@@ -69,8 +69,8 @@ async def get_groq_response(user_prompt, system_prompt):
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        error_message = f"Error getting Groq response: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
+        error_message = f"#Error\n\nError getting Groq response: {e}\n\nUser: {message.chat.id}"
+        await client.send_message(Log, error_message)
         print(f"Error getting Groq response: {e}")
         return "Error getting AI response."
 
@@ -86,8 +86,8 @@ async def users(client, message):
         users = len(await db.fetch_all("users"))
         await message.reply(f'Total Users: {users}')
     except Exception as e:
-        error_message = f"Error: {e}\nUser: {message.chat.id}"
-        await client.send_message(Log, error_message, message_thread_id=Error_Topic)
+        error_message = f"#Error\n\nError: {e}\nUser: {message.chat.id}"
+        await client.send_message(Log, error_message)
         print(e)
 
 @client.on_message(filters.text & ~filters.command('start'))
@@ -111,8 +111,8 @@ async def handle_message(client, message):
                 await x.edit(f'{summary}')
 
                 # Send summary to the log group
-                summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
-                await client.send_message(Log, summary_message, message_thread_id=Summary_Topic)
+                summary_message = f"#Success\n\n Summary:\n{summary}\nUser: {message.chat.id}"
+                await client.send_message(Log, summary_message)
             else:
                 # No transcript available, fallback to audio transcription
                 await x.edit('No captions found. Downloading audio from the YouTube video...')
@@ -160,21 +160,21 @@ async def handle_message(client, message):
                                 await x.edit(f'{summary}')
 
                                 # Send summary to the log group
-                                summary_message = f"Summary:\n{summary}\nUser: {message.chat.id}"
-                                await client.send_message(Log, summary_message, message_thread_id=Summary_Topic)
+                                summary_message = f"#Success\n\nSummary:\n{summary}\nUser: {message.chat.id}"
+                                await client.send_message(Log, summary_message)
                             except sr.RequestError:
                                 error_message = "API unavailable."
-                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
+                                await client.send_message(Log, f"#Error\n\nError: {error_message}\nUser: {message.chat.id}")
                                 print(error_message)
                                 await x.edit(error_message)
                             except sr.UnknownValueError:
                                 error_message = "Unable to recognize speech."
-                                await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
+                                await client.send_message(Log, f"#Error\n\nError: {error_message}\nUser: {message.chat.id}")
                                 print(error_message)
                                 await x.edit(error_message)
                     except Exception as e:
                         error_message = f"Error during transcription: {str(e)}"
-                        await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
+                        await client.send_message(Log, f"#Error\n\nError: {error_message}\nUser: {message.chat.id}")
                         print(error_message)
                         await x.edit(error_message)
                     finally:
@@ -187,12 +187,12 @@ async def handle_message(client, message):
                             print(f"Deleted file: {wav_file}")
                 except Exception as e:
                     error_message = f"Error: {str(e)}"
-                    await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
+                    await client.send_message(Log, f"#Error\n\nError: {error_message}\nUser: {message.chat.id}")
                     print(error_message)
                     await x.edit(error_message)
         except Exception as e:
             error_message = f"Error: {str(e)}"
-            await client.send_message(Log, f"Error: {error_message}\nUser: {message.chat.id}", message_thread_id=Error_Topic)
+            await client.send_message(Log, f"#Error\n\nError: {error_message}\nUser: {message.chat.id}")
             print(error_message)
             await x.edit(error_message)
     else:
@@ -221,7 +221,7 @@ async def bcast(client, message):
             done += 1
         except Exception as brd_er:
             error_message = f"Broadcast error:\nChat: {int(user_id)}\nError: {brd_er}"
-            await client.send_message(Log, error_message, topic_id=Error_Topic)
+            await client.send_message(Log, error_message)
             print(error_message)
             error += 1
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
@@ -231,5 +231,5 @@ if __name__ == '__main__':
         client.run()
     except Exception as e:
         error_message = f"Error running the bot: {e}"
-        client.loop.run_until_complete(client.send_message(Log, error_message, topic_id=Error_Topic))
+        client.loop.run_until_complete(client.send_message(Log, error_message))
         print(error_message)
