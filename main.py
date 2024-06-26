@@ -89,7 +89,7 @@ async def start(client, message):
 
 
 **𝖒𝖆𝖉𝖊 𝖜𝖎𝖙𝖍 😘 𝖇𝖟 [.ｉｏ ｄｅｖｓ](https://t.me/botio_devs)**
-""")
+""", disable_web_page_preview=True)
     if not await db.is_inserted("users", message.chat.id):
         await db.insert("users", message.chat.id)
 
