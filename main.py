@@ -1,18 +1,13 @@
 import os
 import re
-import asyncio
 import speech_recognition as sr
 from pydub import AudioSegment
 from youtube_transcript_api import YouTubeTranscriptApi
-from pytube import YouTube
-from groq import Groq
+from yt_dlp import YoutubeDL
 from pyrogram import Client, filters
-from youtube_transcript_api.formatters import JSONFormatter
+from groq import Groq
 from config import Telegram, Ai
 from database import db
-from yt_dlp import YoutubeDL
-
-
 
 system_prompt ="""
 Do NOT repeat unmodified content.
@@ -84,12 +79,9 @@ async def users(client, message):
     except Exception as e:
         print(e)
 
-
-@Client.on_message(filters.text)
+@client.on_message(filters.text & ~filters.command('start'))
 async def handle_message(client, message):
     url = message.text
-    if message.text.startswith('/start'):
-        return
     print(f"Received URL: {url}")
 
     # Check if the message is a YouTube link
@@ -139,7 +131,6 @@ async def handle_message(client, message):
                         print(f"Converted audio to {wav_file}")
 
                         # Convert audio to text
-                        recognizer = sr.Recognizer()
                         with sr.AudioFile(wav_file) as source:
                             recognizer.adjust_for_ambient_noise(source)
                             audio_data = recognizer.record(source)
@@ -179,8 +170,6 @@ async def handle_message(client, message):
         print("Invalid YouTube link.")
         await message.reply('Please send a valid YouTube link.')
 
-
-
 @client.on_message(filters.command('bcast') & filters.user(Telegram.AUTH_USER_ID))
 async def bcast(client, message):
     if not message.reply_to_message:
@@ -206,9 +195,7 @@ async def bcast(client, message):
             error += 1
     await xx.edit(f"Broadcast completed.\nSuccess: {done}\nFailed: {error}")
 
-
 if __name__ == '__main__':
-
     try:
         client.run()
     except Exception as e:
