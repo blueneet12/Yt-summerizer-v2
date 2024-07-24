@@ -10,7 +10,7 @@ RUN pip install --upgrade pip
 
 RUN pip install -r requirements.txt
 
-
+RUN pip install yt_dlp
 
 EXPOSE 8080
 
