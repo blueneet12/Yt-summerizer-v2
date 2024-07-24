@@ -41,10 +41,20 @@ async def extract_youtube_transcript(youtube_url, client, message):
         video_id = video_id_match.group(0) if video_id_match else None
         if video_id is None:
             return "no transcript"
+
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = transcript_list.find_transcript(['en', 'ja', 'ko', 'de', 'fr', 'ru', 'it', 'es', 'pl', 'uk', 'nl', 'zh-TW', 'zh-CN', 'zh-Hant', 'zh-Hans'])
-        transcript_text = ' '.join([item['text'] for item in transcript.fetch()])
-        return transcript_text
+
+        # Try to find a transcript in the desired languages
+        try:
+            transcript = transcript_list.find_transcript(['en', 'ja', 'ko', 'de', 'fr', 'ru', 'it', 'es', 'pl', 'uk', 'nl', 'zh-TW', 'zh-CN', 'zh-Hant', 'zh-Hans'])
+            transcript_text = ' '.join([item['text'] for item in transcript.fetch()])
+            return transcript_text
+        except:
+            # If not found, try to get the first available transcript
+            for trans in transcript_list:
+                transcript_text = ' '.join([item['text'] for item in trans.fetch()])
+                return transcript_text
+
     except Exception as e:
         error_message = f"Error: {e}\nUser: {message.chat.id}"
         await client.send_message(Log, error_message)
