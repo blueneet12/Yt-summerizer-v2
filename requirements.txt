@@ -1,7 +1,7 @@
 telethon
 SpeechRecognition
 groq
-yt_dlp
+
 pytube3
 pytube
 pydub
