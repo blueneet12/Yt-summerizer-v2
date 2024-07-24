@@ -12,4 +12,4 @@ EXPOSE 8080
 
 COPY . .
 
-CMD ["python", "-m", "FileStream"]
+CMD ["python", "main.py"]
